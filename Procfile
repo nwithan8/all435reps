@@ -1,1 +1,1 @@
-worker: python3 all435reps.py
+worker: python3 main.py
