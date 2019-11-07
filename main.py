@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import os
 import re
 import tweepy
 import json
@@ -12,17 +13,22 @@ from urllib3.exceptions import ProtocolError
 #from oauth2client.service_account import ServiceAccountCredentials
 
 #Twitter API Credentials
-consumer_key = 'xxxxx'
-consumer_secret = 'xxxx'
-access_token = 'xxxx'
-access_secret = 'xxxx'
+#consumer_key = 'xxxxx'
+#consumer_secret = 'xxxx'
+#access_token = 'xxxx'
+#access_secret = 'xxxx'
+consumer_key = os.environ.get('TWITTER_CONSUMER_KEY')
+consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET')
+access_token = os.environ.get('TWITTER_ACCESS_TOKEN')
+access_secret = os.environ.get('TWITTER_ACCESS_SECRET')
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)
 twitter = tweepy.API(auth)
 
 #IFTTT Webhook URL (for app: https://ifttt.com/applets/98969598d-if-maker-event-all435reps-then-add-row-to-google-drive-spreadsheet)
-URL = "https://maker.ifttt.com/trigger/all435reps/with/key/xxxx"
+KEY = os.environ.get('IFTTT_KEY')
+URL = "https://maker.ifttt.com/trigger/all435reps/with/key/{}".format(KEY)
 DATA = ""
 LINK = ""
 NAME = ""
