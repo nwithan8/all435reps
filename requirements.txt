@@ -1,4 +1,6 @@
+praw
+prawcore
+bestbuy
 tweepy
 twitter
-urllib3
 requests

@@ -1,1 +1,1 @@
-worker: python3 main.py
+worker: run_all.sh
