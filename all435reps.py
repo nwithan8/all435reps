@@ -7,6 +7,8 @@ import objectrest
 import tweepy
 from dotenv import load_dotenv
 
+import logs as logging
+
 load_dotenv()
 
 # Twitter API Credentials
@@ -39,10 +41,10 @@ class HouseMemberStream(tweepy.StreamingClient):
         return None
 
     def on_connect(self):
-        print("Connected to Twitter API")
+        logging.debug("Connected to Twitter API")
 
     def on_disconnect(self):
-        print("Disconnected from Twitter API")
+        logging.debug("Disconnected from Twitter API")
 
     def on_tweet(self, tweet: tweepy.Tweet):
         member: tweepy.User = self._get_member_from_tweet(tweet=tweet)
@@ -52,10 +54,10 @@ class HouseMemberStream(tweepy.StreamingClient):
             process_status(tweet, member, self.tweeting_client)
 
     def on_errors(self, errors):
-        print(f"Errors {errors}")
+        logging.error(f"Errors {errors}")
 
     def on_exception(self, exception):
-        print(f"Exception {exception}")
+        logging.error(f"Exception {exception}")
 
 
 def archive_tweet(tweet: tweepy.Tweet, member_name: str, member_username: str) -> None:
@@ -73,7 +75,7 @@ def retweet(client: tweepy.Client, tweet: tweepy.Tweet) -> None:
 
 
 def process_status(tweet: tweepy.Tweet, member: tweepy.User, tweeting_client: tweepy.Client) -> None:
-    print(f"@{member.name} tweeted: \'{tweet.text}\'")
+    logging.debug(f"@{member.name} tweeted: \'{tweet.text}\'")
 
     # Archiving is more important, so do first
     archive_tweet(tweet=tweet, member_name=member.name, member_username=member.username)
@@ -81,6 +83,9 @@ def process_status(tweet: tweepy.Tweet, member: tweepy.User, tweeting_client: tw
 
 
 if __name__ == '__main__':
+    # Set up logging
+    logging.init(app_name="All435Reps", console_log_level="DEBUG", log_to_file=True)
+
     # Set up Twitter client
     client = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN,
                            consumer_key=TWITTER_CONSUMER_KEY,
@@ -99,6 +104,6 @@ if __name__ == '__main__':
     from_filter = " OR ".join([f"from: {house_member.id}" for house_member in house_members_twitter_accounts])
     stream.add_rules(tweepy.StreamRule(from_filter))
 
-    print("Names and accounts imported. Now monitoring...")
+    logging.debug("Names and accounts imported. Now monitoring...")
 
     stream.filter(tweet_fields=["id", "author_id", "text"])
