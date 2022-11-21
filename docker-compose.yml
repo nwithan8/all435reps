@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  all435reps:
+    build:
+        context: .
+        dockerfile: Dockerfile
+        args:
+            INFO_VERSION: "docker-compose-develop"
+    environment:
+      IFTTT_KEY: my_ifttt_key
+      TWITTER_ACCESS_TOKEN: my_twitter_access_token
+      TWITTER_ACCESS_SECRET: my_twitter_access_token_secret
+      TWITTER_CONSUMER_KEY: my_twitter_consumer_key
+      TWITTER_CONSUMER_SECRET: my_twitter_consumer_secret
+      TWITTER_BEARER_TOKEN: my_twitter_bearer_token

@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Twitter API Credentials
-CONSUMER_KEY = os.getenv("CONSUMER_KEY")
-CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-ACCESS_TOKEN_SECRET = os.getenv("ACCESS_SECRET")
-BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
+TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 # IFTTT Webhook URL (for app: https://ifttt.com/applets/98969598d-if-maker-event-all435reps-then-add-row-to-google
 # -drive-spreadsheet)
@@ -79,18 +79,18 @@ def process_status(tweet: tweepy.Tweet, member: tweepy.User, tweeting_client: tw
 
 if __name__ == '__main__':
     # Set up Twitter client
-    client = tweepy.Client(bearer_token=BEARER_TOKEN,
-                           consumer_key=CONSUMER_KEY,
-                           consumer_secret=CONSUMER_SECRET,
-                           access_token=ACCESS_TOKEN,
-                           access_token_secret=ACCESS_TOKEN_SECRET)
+    client = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN,
+                           consumer_key=TWITTER_CONSUMER_KEY,
+                           consumer_secret=TWITTER_CONSUMER_SECRET,
+                           access_token=TWITTER_ACCESS_TOKEN,
+                           access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
 
     # Get list of all House members
     house_members_list_summary: tweepy.Response = client.get_list_members(LIST_ID)
     house_members_twitter_accounts: List[tweepy.User] = house_members_list_summary.data
 
     stream = HouseMemberStream(client=client,
-                               bearer_token=BEARER_TOKEN,
+                               bearer_token=TWITTER_BEARER_TOKEN,
                                house_member_twitter_accounts=house_members_twitter_accounts)
 
     from_filter = " OR ".join([f"from: {house_member.id}" for house_member in house_members_twitter_accounts])
