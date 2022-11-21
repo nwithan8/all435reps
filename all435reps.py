@@ -51,6 +51,9 @@ class HouseMemberStream(tweepy.StreamingClient):
         else:
             process_status(tweet, member, self.tweeting_client)
 
+    def on_errors(self, errors):
+        print(f"Errors {errors}")
+
     def on_exception(self, exception):
         print(f"Exception {exception}")
 
@@ -73,8 +76,8 @@ def process_status(tweet: tweepy.Tweet, member: tweepy.User, tweeting_client: tw
     print(f"@{member.name} tweeted: \'{tweet.text}\'")
 
     # Archiving is more important, so do first
-    # archive_tweet(tweet=tweet, member_name=member.name, member_username=member.username)
-    # retweet(client=tweeting_client, tweet=tweet)
+    archive_tweet(tweet=tweet, member_name=member.name, member_username=member.username)
+    retweet(client=tweeting_client, tweet=tweet)
 
 
 if __name__ == '__main__':
