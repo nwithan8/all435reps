@@ -1,112 +1,101 @@
 #!/usr/bin/python3
 
 import os
-import re
-import tweepy
-import json
-from tweepy.streaming import StreamListener
-from tweepy import Stream
-import twitter
-import requests
-from urllib3.exceptions import ProtocolError
+from typing import List, Union
 
-# import gspread
-# from oauth2client.service_account import ServiceAccountCredentials
+import objectrest
+import tweepy
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Twitter API Credentials
-# consumer_key = 'xxxxx'
-# consumer_secret = 'xxxx'
-# access_token = 'xxxx'
-# access_secret = 'xxxx'
-consumer_key = os.environ.get('TWITTER_CONSUMER_KEY')
-consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET')
-access_token = os.environ.get('TWITTER_ACCESS_TOKEN')
-access_secret = os.environ.get('TWITTER_ACCESS_SECRET')
+CONSUMER_KEY = os.getenv("CONSUMER_KEY")
+CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+ACCESS_TOKEN_SECRET = os.getenv("ACCESS_SECRET")
+BEARER_TOKEN = os.getenv("BEARER_TOKEN")
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_token, access_secret)
-twitter = tweepy.API(auth)
+# IFTTT Webhook URL (for app: https://ifttt.com/applets/98969598d-if-maker-event-all435reps-then-add-row-to-google
+# -drive-spreadsheet)
+_key = os.environ.get('IFTTT_KEY')
+IFTTT_WEBHOOK_URL = f"https://maker.ifttt.com/trigger/all435reps/with/key/{_key}"
 
-# IFTTT Webhook URL (for app: https://ifttt.com/applets/98969598d-if-maker-event-all435reps-then-add-row-to-google-drive-spreadsheet)
-KEY = os.environ.get('IFTTT_KEY')
-URL = "https://maker.ifttt.com/trigger/all435reps/with/key/{}".format(KEY)
-DATA = ""
-LINK = ""
-NAME = ""
-
-USERNAMES = []
-REAL_NAMES = []
-USER_IDS = []
-
-# Twitter list import
-for member in tweepy.Cursor(twitter.list_members, 'TwitterGov', 'us-house').items():
-    USER_IDS.append(str(member.id))
-    REAL_NAMES.append(member.name)
-    USERNAMES.append(str(member.screen_name))
-
-print("Names and accounts imported. Now monitoring...")
+# US House member list (via @TwitterGov):
+LIST_ID = "63915247"  # https://twitter.com/i/lists/63915247
 
 
-def from_creator(status):
-    if hasattr(status, 'retweeted_status'):
-        return False
-    elif status.in_reply_to_status_id != None:
-        return False
-    elif status.in_reply_to_screen_name != None:
-        return False
-    elif status.in_reply_to_user_id != None:
-        return False
-    else:  # If not retweet and not in reply to another tweet
-        return True
+class HouseMemberStream(tweepy.StreamingClient):
+
+    def __init__(self, client: tweepy.Client, bearer_token: str, house_member_twitter_accounts: List[tweepy.User]):
+        super().__init__(bearer_token=bearer_token)
+        self.tweeting_client: tweepy.Client = client
+        self.house_member_twitter_accounts: List[tweepy.User] = house_member_twitter_accounts
+
+    def _get_member_from_tweet(self, tweet: tweepy.Tweet) -> Union[tweepy.User, None]:
+        for member in self.house_member_twitter_accounts:
+            if member.id == tweet.author_id:
+                return member
+        return None
+
+    def on_connect(self):
+        print("Connected to Twitter API")
+
+    def on_disconnect(self):
+        print("Disconnected from Twitter API")
+
+    def on_tweet(self, tweet: tweepy.Tweet):
+        member: tweepy.User = self._get_member_from_tweet(tweet=tweet)
+        if not member:
+            pass
+        else:
+            process_status(tweet, member, self.tweeting_client)
+
+    def on_exception(self, exception):
+        print(f"Exception {exception}")
 
 
-def retweet(status):
-    twitter.retweet(status.id)
+def archive_tweet(tweet: tweepy.Tweet, member_name: str, member_username: str) -> None:
+    data = {
+        'value1': f"{member_name} (@{member_username})",
+        'value2': tweet.text,
+        'value3': f"twitter.com/{member_username}/status/{tweet.id}"
+    }
+
+    objectrest.post(url=IFTTT_WEBHOOK_URL, data=data)
 
 
-def archive(status):
-    global DATA
-    NAME = REAL_NAMES[USER_IDS.index(str(status.user.id))] + " (@" + USERNAMES[
-        USER_IDS.index(str(status.user.id))] + ")"
-    try:
-        DATA = {'value1': NAME, 'value2': grabtext(status),
-                'value3': "twitter.com/" + str(status.user.screen_name) + "/status/" + str(status.id)}
-    except UnicodeEncodeError:  # If ascii error with status text, at least archive a link to the tweet
-        DATA = {'value1': NAME, 'value2': "[ERROR SAVING TEXT. PlEASE VISIT LINK.] ",
-                'value3': "twitter.com/" + str(status.user.screen_name) + "/status/" + str(status.id)}
-    requests.post(url=URL, data=DATA)
+def retweet(client: tweepy.Client, tweet: tweepy.Tweet) -> None:
+    client.retweet(tweet_id=tweet.id)
 
 
-def grabtext(status):
-    try:
-        return status.extended_tweet["full_text"]
-    except AttributeError:
-        return status.text
+def process_status(tweet: tweepy.Tweet, member: tweepy.User, tweeting_client: tweepy.Client) -> None:
+    print(f"@{member.name} tweeted: \'{tweet.text}\'")
 
-
-def process_status(status):
-    if from_creator(status):
-        print("@" + status.user.screen_name + " tweeted: \'" + grabtext(status) + "\'")
-        archive(status)  # Archiving is more important, so do first
-        retweet(status)
-
-
-class StdOutListener(StreamListener):
-
-    def on_status(self, status):
-        process_status(status)
-
-    def on_error(self, status_code):
-        print("Error, code" + status_code)
+    # Archiving is more important, so do first
+    # archive_tweet(tweet=tweet, member_name=member.name, member_username=member.username)
+    # retweet(client=tweeting_client, tweet=tweet)
 
 
 if __name__ == '__main__':
-    l = StdOutListener()
-    stream = Stream(auth, l)
-    while True:
-        try:
-            print("Connection started.")
-            stream.filter(follow=USER_IDS)
-        except (ProtocolError, AttributeError):  # Force restart if error out
-            print("Connection timed out. Restarting...")
-            continue
+    # Set up Twitter client
+    client = tweepy.Client(bearer_token=BEARER_TOKEN,
+                           consumer_key=CONSUMER_KEY,
+                           consumer_secret=CONSUMER_SECRET,
+                           access_token=ACCESS_TOKEN,
+                           access_token_secret=ACCESS_TOKEN_SECRET)
+
+    # Get list of all House members
+    house_members_list_summary: tweepy.Response = client.get_list_members(LIST_ID)
+    house_members_twitter_accounts: List[tweepy.User] = house_members_list_summary.data
+
+    stream = HouseMemberStream(client=client,
+                               bearer_token=BEARER_TOKEN,
+                               house_member_twitter_accounts=house_members_twitter_accounts)
+
+    from_filter = " OR ".join([f"from: {house_member.id}" for house_member in house_members_twitter_accounts])
+    stream.add_rules(tweepy.StreamRule(from_filter))
+
+    print("Names and accounts imported. Now monitoring...")
+
+    stream.filter(tweet_fields=["id", "author_id", "text"])

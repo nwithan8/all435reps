@@ -1,6 +1,3 @@
-praw
-prawcore
-bestbuy
-tweepy
-twitter
-requests
+tweepy==4.12.*
+objectrest==2.0.*
+python-dotenv==0.21.0
